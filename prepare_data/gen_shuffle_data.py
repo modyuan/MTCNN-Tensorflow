@@ -30,10 +30,10 @@ import numpy as np
 import cv2
 import numpy.random as npr
 
+sys.path.append('../')
 from tools import IoU
 
-sys.path.append('../')
-
+LIMIT = 1000
 
 def main(args):
 
@@ -59,7 +59,32 @@ def main(args):
     f3 = open(os.path.join(save_dir, 'part_' + str(net) + '.txt'), 'w')
     with open(anno_file, 'r') as f:
         annotations = f.readlines()
-    num = len(annotations)
+
+    newformat = []
+    i = 0
+    while i<len(annotations):
+        img = annotations[i].strip() # pic path
+        i+=1
+        while img.rfind(".jpg")<0 :
+            img = annotations[i].strip()
+            i+=1
+        num = int(annotations[i].strip()) # number of rectangles
+        i+=1
+        
+        if num==0:
+            continue
+        rect = [img]
+        for j in range(num):
+            x,y,w,h = list(map(float,annotations[i].strip().split()[:4])) # x,y,w,h,other  in file
+            i+=1
+            rect.append(x)
+            rect.append(y)
+            rect.append(x+w)
+            rect.append(y+h)
+        newformat.append(rect)
+    
+    annotations = newformat
+    num = len(newformat)
     print('%d pics in total' % num)
     p_idx = 0  # positive
     n_idx = 0  # negative
@@ -67,15 +92,16 @@ def main(args):
     idx = 0
     box_idx = 0
     for annotation in annotations:
-        annotation = annotation.strip().split(' ')
         im_path = annotation[0]
-        bbox = list(map(float, annotation[1:]))
+        bbox = annotation[1:]
         boxes = np.array(bbox, dtype=np.float32).reshape(-1, 4)
-        img = cv2.imread(os.path.join(im_dir, im_path + '.jpg'))
+        img = cv2.imread(os.path.join(im_dir, im_path))
         idx += 1
-        if idx % 10000 == 0:
+        if idx % LIMIT== 0:
             print(idx, 'images done')
+            break
 
+        print(os.path.join(im_dir, im_path))
         height, width, channel = img.shape
 
         neg_num = 0
